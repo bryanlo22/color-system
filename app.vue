@@ -2,15 +2,34 @@
 import { ref } from "vue";
 import chroma from "chroma-js";
 
+import "modern-normalize";
+
 const colorSteps = ref(7);
 const colors: Ref<string[]> = ref([]);
+
 const showHex = ref(false);
+const showRGB = ref(false);
 const showHSL = ref(false);
 const showLCH = ref(false);
 const showContrast = ref(false);
 
+const firstStepChroma = ref(29);
+const firstStepLightness = ref(101);
+const middleStepLightness = ref(52);
+const lastStepChroma = ref(21);
+const lastStepLightness = ref(0);
+
 onMounted(() => {
-  const initialColorCount = 5;
+  let initialColorCount: number;
+  const windowWidth = window.innerWidth;
+  if (windowWidth < 512) {
+    initialColorCount = 3;
+  } else if (windowWidth < 768) {
+    initialColorCount = 4;
+  } else {
+    initialColorCount = 5;
+  }
+
   const initialHue = randomHue();
 
   for (let i = 0; i < initialColorCount; i++) {
@@ -30,17 +49,21 @@ function randomColor(hue: number) {
 
 function lightest(hex: string) {
   const hue = chroma(hex).hcl()[0];
-  return chroma.hcl(hue, 30, 101).hex();
+  return chroma.hcl(hue, firstStepChroma.value, firstStepLightness.value).hex();
 }
 
 function darkest(hex: string) {
   const hue = chroma(hex).hcl()[0];
-  return chroma.hcl(hue, 20, 1).hex();
+  return chroma.hcl(hue, lastStepChroma.value, lastStepLightness.value).hex();
 }
 
 function scaled(hex: string) {
   return chroma
-    .scale([lightest(hex), chroma(hex).set("hcl.l", 52), darkest(hex)])
+    .scale([
+      lightest(hex),
+      chroma(hex).set("hcl.l", middleStepLightness.value),
+      darkest(hex),
+    ])
     .colors(colorSteps.value);
 }
 
@@ -64,6 +87,11 @@ function toPercentage(value: number) {
   return Math.round(100 * value);
 }
 
+function getRGB(hex: string) {
+  const [r, g, b] = chroma(hex).rgb();
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
 function getHSL(hex: string) {
   const [h, s, l] = chroma(hex).hsl();
   return `hsl(${Math.round(h)}deg ${toPercentage(s)}% ${toPercentage(l)}%)`;
@@ -78,46 +106,74 @@ function getLCH(hex: string) {
 <template>
   <div class="page">
     <div class="controls">
-      <label>
-        Color Steps:
-        <input
-          v-model="colorSteps"
-          type="number"
-          @input="
-            () => {
-              if (colorSteps < 5) {
-                colorSteps = 5;
+      <div class="checkboxes">
+        <label>
+          <input v-model="showHex" type="checkbox" />
+          Hex
+        </label>
+        <label>
+          <input v-model="showRGB" type="checkbox" />
+          RGB (Red, Green, Blue)
+        </label>
+        <label>
+          <input v-model="showHSL" type="checkbox" />
+          HSL (Hue, Saturation, Lightness)
+        </label>
+        <label>
+          <input v-model="showLCH" type="checkbox" />
+          LCH (Lightness, Chroma, Hue)
+        </label>
+        <label>
+          <input v-model="showContrast" type="checkbox" />
+          WCAG Contrast Ratio
+        </label>
+      </div>
+      <div class="customization">
+        <label>
+          Color Steps:
+          <input
+            v-model="colorSteps"
+            type="number"
+            @input="
+              () => {
+                if (colorSteps < 5) {
+                  colorSteps = 5;
+                }
+                if (colorSteps > 9) {
+                  colorSteps = 9;
+                }
+                colorSteps = Math.floor(colorSteps);
               }
-              if (colorSteps > 9) {
-                colorSteps = 9;
-              }
-              colorSteps = Math.floor(colorSteps);
-            }
-          "
-        />
-      </label>
-      <label>
-        <input v-model="showHex" type="checkbox" />
-        Hex
-      </label>
-      <label>
-        <input v-model="showHSL" type="checkbox" />
-        HSL (Hue, Saturation, Lightness)
-      </label>
-      <label>
-        <input v-model="showLCH" type="checkbox" />
-        LCH (Lightness, Chroma, Hue)
-      </label>
-      <label>
-        <input v-model="showContrast" type="checkbox" />
-        WCAG Contrast Ratio
-      </label>
-      <button
-        v-if="colors.length < 9"
-        @click="() => colors.push(randomColor(randomHue()).hex())"
-      >
-        Add Color
-      </button>
+            "
+          />
+        </label>
+        <label>
+          First Step Chroma:
+          <input v-model="firstStepChroma" type="number" />
+        </label>
+        <label>
+          First Step Lightness:
+          <input v-model="firstStepLightness" type="number" />
+        </label>
+        <label>
+          Middle Step Lightness:
+          <input v-model="middleStepLightness" type="number" />
+        </label>
+        <label>
+          Last Step Chroma:
+          <input v-model="lastStepChroma" type="number" />
+        </label>
+        <label>
+          Last Step Lightness:
+          <input v-model="lastStepLightness" type="number" />
+        </label>
+        <button
+          v-if="colors.length < 9"
+          @click="() => colors.push(randomColor(randomHue()).hex())"
+        >
+          Add Color
+        </button>
+      </div>
     </div>
     <div class="color-grid">
       <div v-for="(baseHex, i) in colors" :key="i" class="colors">
@@ -144,14 +200,23 @@ function getLCH(hex: string) {
             <div v-if="showHex">
               {{ currentHex }}
             </div>
+            <div v-if="showRGB">
+              {{ getRGB(currentHex) }}
+            </div>
             <div v-if="showHSL">
               {{ getHSL(currentHex) }}
             </div>
             <div v-if="showLCH">
               {{ getLCH(currentHex) }}
             </div>
-            <div v-if="showContrast">
-              {{ getContrastValue(j, baseHex, currentHex) }}
+            <div v-if="showContrast" class="contrast">
+              <template v-if="getContrastValue(j, baseHex, currentHex) >= 4.5">
+                <Icon name="fa6-solid:check" />
+              </template>
+              <template v-else>
+                <Icon name="fa6-solid:xmark" />
+              </template>
+              {{ getContrastValue(j, baseHex, currentHex).toFixed(2) }}
             </div>
           </div>
         </template>
@@ -176,7 +241,7 @@ function getLCH(hex: string) {
                 }
               }"
         >
-          Submit
+          Button
         </button>
         <div
           class="tag"
@@ -202,6 +267,26 @@ function getLCH(hex: string) {
 }
 
 .controls {
+  padding: 10px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 768px) {
+  .controls {
+    flex-direction: row;
+    gap: 40px;
+  }
+}
+
+.checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.customization {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -225,6 +310,14 @@ input[type="checkbox"] {
 .color-grid {
   display: flex;
   justify-content: space-evenly;
+  padding: 10px;
+}
+@media (min-width: 1024px) {
+  .color-grid {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
 }
 
 .colors {
@@ -240,12 +333,21 @@ input[type="color"] {
 .color {
   width: 100%;
   min-height: 100px;
+  height: 10svh;
+  max-height: 200px;
+  padding: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 5px;
   text-align: center;
+}
+
+.contrast {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .submit {
