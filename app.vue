@@ -106,7 +106,7 @@ function getLCH(hex: string) {
       </label>
       <label>
         <input v-model="showLCH" type="checkbox" />
-        HCL (Hue, Chroma, Lightness)
+        LCH (Lightness, Chroma, Hue)
       </label>
       <label>
         <input v-model="showContrast" type="checkbox" />
