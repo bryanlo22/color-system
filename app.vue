@@ -139,8 +139,8 @@ function getLCH(hex: string) {
                 if (colorSteps < 5) {
                   colorSteps = 5;
                 }
-                if (colorSteps > 9) {
-                  colorSteps = 9;
+                if (colorSteps > 15) {
+                  colorSteps = 15;
                 }
                 colorSteps = Math.floor(colorSteps);
               }
